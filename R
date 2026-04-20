@@ -1,0 +1,197 @@
+rm(list = ls())
+
+# when installing from windows, make sure Rtools is installed first
+# https://cran.r-project.org/bin/windows/Rtools/
+
+# install mrfDepth from github for the last version
+install.packages("devtools")
+devtools::install_github("PSegaert/mrfDepth")
+
+# load supplementary code and datasets
+source("\\\\smb\\ra234969\\Downloads\\DO_code.R")
+load("\\\\smb\\ra234969\\Downloads\\DO_small_datasets.RData")
+######################
+# Family Income Data #
+######################
+
+temp      <- compScales(FamilyIncome)
+sa        <- temp$sa
+sb        <- temp$sb
+med       <- temp$med
+mad       <- mad(x = FamilyIncome)
+sdovalues <- mrfDepth::outlyingness(FamilyIncome)$outlyingnessX
+dovalues  <- mrfDepth::dirOutl(FamilyIncome)$outlyingnessX
+cutoffSDO <- computeCutoff(sdovalues)
+cutoffDO  <- computeCutoff(dovalues)
+
+h <- hist(FamilyIncome, breaks = seq(0, 1e+7, by = 5000), xlim = c(0, 5e+5),
+       plot = TRUE, cex.lab = 1.5, ylab = "", main = "",
+       xlab = "Annual family income in USD")
+title(ylab = "Frequency", line = 2.5, cex.lab = 1.5)
+arrows(x0 = med, y0 = 300, x1 = med - mad, y1 = 300, col = "orange", length = 0.1)
+arrows(x0 = med, y0 = 300, x1 = med + mad, y1 = 300, col = "orange", length = 0.1)
+points(x = med, y = 300)
+arrows(x0 = med, y0 = 200, x1 = med - sb, y1 = 200, col = "blue", length = 0.1)
+arrows(x0 = med, y0 = 200, x1 = med + sa, y1 = 200, col = "blue", length = 0.1)
+points(x = med, y = 200)
+legend("topright",legend = c("DO scales","SDO scales"),fill = 
+         c("blue","orange")) # Figure 1 in paper
+
+segments(x0 = (med + cutoffDO * sa), y0 = 0, x1 = (med + cutoffDO * sa),
+         y1 = 100, col = "blue", lwd = 3)
+segments(x0 = (med + cutoffSDO * mad), y0 = 0, x1 = (med + cutoffSDO * mad),
+         y1 = 100, col = "orange", lwd = 3) # Figure 9
+
+
+#################
+# Bloodfat Data #
+#################
+
+axislengthx <- seq(0, 500, by = 5)
+axislengthy <- seq(-200, 1000, by = 5)
+xy <- expand.grid(x = axislengthx, y = axislengthy)
+xy <- cbind(xy$x, xy$y)
+nlev <- seq(0, 16, by = 1)
+
+z1 <- mrfDepth::dirOutl(x = Bloodfat, z = xy)
+z1a <- matrix(data = z1$outlyingnessZ, nrow = length(axislengthx),
+             ncol = length(axislengthy))
+z2 <- mrfDepth::outlyingness(x = Bloodfat, z = xy)
+z2a <- matrix(data = z2$outlyingnessZ, nrow = length(axislengthx),
+             ncol = length(axislengthy))
+z3 <- mrfDepth::adjOutl(x = Bloodfat, z = xy)
+z3a <- matrix(data = z3$outlyingnessZ, nrow = length(axislengthx),
+             ncol = length(axislengthy))
+
+filled.contour(x = axislengthx, y = axislengthy, main = "SDO Contours",
+               z = z2a, color.palette = heat.colors, levels = nlev,
+               plot.axes = 
+               {points(Bloodfat[, 1], Bloodfat[, 2], pch = 16);axis(1);axis(2)})
+# Figure 5(a)
+
+filled.contour(x = axislengthx, y = axislengthy, main = "DO Contours",
+               z = z1a, color.palette = heat.colors, levels = nlev,
+               plot.axes = 
+               {points(Bloodfat[, 1], Bloodfat[, 2], pch = 16);axis(1);axis(2)})
+# Figure 5(b)
+
+filled.contour(x = axislengthx, y = axislengthy, main = "AO Contours",
+               z = z3a, color.palette = heat.colors, levels = nlev,
+               plot.axes = 
+               {points(Bloodfat[, 1], Bloodfat[, 2], pch = 16);axis(1);axis(2)})
+
+cutoffSDO <- computeCutoff(z2$outlyingnessX)
+cutoffDO  <- computeCutoff(z1$outlyingnessX)
+cutoffAO  <- computeCutoff(z3$outlyingnessX)
+
+# Figure 10
+par(mfrow = c(1, 1))
+plot(Bloodfat, main = "",xlim = c(0, 500), ylim = c(-200, 1000), col = "black",
+     xaxs = "i", yaxs = "i", xlab = "", ylab = "")
+contour(x = axislengthx, y = axislengthy, z = z1a, add = TRUE,
+        levels = c(cutoffDO), col = "blue", drawlabels = FALSE, lwd = 2)
+contour(x = axislengthx, y = axislengthy, z = z2a, add = TRUE,
+        levels = c(cutoffSDO), col = "orange", drawlabels = FALSE, lwd = 2)
+legend("topleft", lty = c(1, 1), lwd = c(2, 2), col = c("blue", "orange"),
+       legend = c("DO cutoff", "SDO cutoff"))
+
+
+par(mfrow = c(1, 1))
+plot(Bloodfat, main = "", xlim = c(0, 500), ylim = c(-200, 1000), col = "black",
+     xaxs = "i", yaxs = "i", xlab = "", ylab = "")
+contour(x = axislengthx, y = axislengthy, z = z1a, add = TRUE,
+        levels = c(cutoffDO), col = "blue", drawlabels = FALSE, lwd = 2)
+contour(x = axislengthx, y = axislengthy, z = z2a, add = TRUE,
+        levels = c(cutoffSDO), col = "orange", drawlabels = FALSE, lwd = 2)
+contour(x = axislengthx, y = axislengthy, z = z3a,add = TRUE,
+        levels = c(cutoffAO), col = "red", drawlabels = FALSE, lwd = 2)
+legend("topleft", lty = c(1, 1), lwd = c(2, 2), col = c("blue", "orange", "red"),
+       legend = c("DO cutoff", "SDO cutoff", "AO cutoff"))
+
+
+##############
+# Glass Data #
+##############
+
+weights <- array(rep(1, 750), dim = c(1, 750))
+weights[,1:13] <- 0
+ptm <- proc.time()
+DO_glass <-  mrfDepth::fOutl(x = aperm(Glass, c(2, 1, 3)), alpha = weights,
+                           type = "fDO", distOptions = list(rmZeroes = TRUE,
+                                                            maxRatio = 3),
+                           diagnostic = TRUE)
+print(proc.time() - ptm) # 10 seconds
+
+mrfDepth::fom(DO_glass, cutoff = TRUE)
+
+DO_heatmap_sample(DO_glass$crossDistsX,weights = weights,breaks = c(0,50,100,150),
+                  labels = c(0,50,100,150))
+
+# The data files of the MRI data and the video data are quite large. You
+# can download them from: http://wis.kuleuven.be/stat/robust/software
+load("DO_MRI_data.RData")       # 32 Mb
+load("DO_Video_data.RData")     # 38 Mb
+
+
+############
+# MRI Data #
+############
+
+# In the paper we analyzed the MRI data by the projection pursuit
+# approach, which took a long time.
+# To save computation time we use the componentwise procedure
+# here. The resulting figures are almost identical.
+
+dims <- dim(MRI)
+dim(MRI) <- c(dims[1], prod(dims[2:3]), dims[4])
+
+ptm <- proc.time()
+DO_MRI_compwise <- mrfDepth::fOutl(x = aperm(MRI, c(2, 1, 3)), type = "fDO",
+                                   distOptions = list(maxRatio = 2,
+                                                      type = "compWise"),
+                                  diagnostic = TRUE)
+print(proc.time() - ptm) # 25 seconds
+
+# Figure 13: 
+mrfDepth::fom(DO_MRI_compwise, cutoff = TRUE)
+
+DO_MRI_compwise <- DO_MRI_compwise$crossDistsX
+dim(DO_MRI_compwise) <- dims[1:3]
+# Figure 14:
+DO_heatmap_image(t(apply(DO_MRI_compwise[387, , ], 2, rev)), cap = 15)
+DO_heatmap_image(t(apply(DO_MRI_compwise[92, , ], 2, rev)), cap = 15)
+DO_heatmap_image(t(apply(DO_MRI_compwise[126, , ], 2, rev)), cap = 15)
+
+
+############## 
+# Video Data #
+##############
+
+dims <- dim(Video)
+dim(Video) <- c(dims[1], prod(dims[2:3]), dims[4])
+
+ptm <- proc.time()
+DO_video_compwise <- mrfDepth::fOutl(x = aperm(Video, c(2, 1, 3)), type = "fDO",
+                          distOptions = list(type = "compWise", rmZeroes = TRUE,
+                          EFcheck = FALSE), diagnostic = TRUE)
+print(proc.time() - ptm) # 15 seconds
+# For comparison: he procedure with projection pursuit takes 25 minutes
+# it can be done with the following code:
+# DO_video_PP <- mrfDepth::fOutl(x = aperm(Video, c(2, 1, 3)), type = "fDO",
+#                       distOptions = list(type = "Affine", rmZeroes = TRUE,
+#                       EFcheck = FALSE), diagnostic = TRUE)
+
+
+# Figure 16:
+mrfDepth::fom(DO_video_compwise, cutoff = TRUE)
+
+DO_video_compwise <- DO_video_compwise$crossDistsX
+dim(DO_video_compwise) <- dims[1:3]
+
+# Figure 17:
+DO_heatmap_image(t(apply(DO_video_compwise[100, , ], 2, rev)), cap = 75)
+DO_heatmap_image(t(apply(DO_video_compwise[487, , ], 2, rev)), cap = 75)
+DO_heatmap_image(t(apply(DO_video_compwise[491, , ], 2, rev)), cap = 75)
+DO_heatmap_image(t(apply(DO_video_compwise[500, , ], 2, rev)), cap = 75)
+
+############################################################
